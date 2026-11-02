@@ -1,0 +1,14 @@
+{
+  "name": "claude-usage",
+  "description": "Claude Code mods by zoyluoblue: a color-coded ring for your 5-hour and weekly usage left.",
+  "owner": {
+    "name": "zoyluoblue",
+    "url": "https://github.com/zoyluoblue"
+  },
+  "plugins": [
+    {
+      "name": "quota-ring",
+      "source": "./"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "quota-ring",
+  "version": "0.1.0",
+  "description": "A tiny color-coded double ring above the Claude Code prompt: 5-hour and 7-day usage left, the 5-hour reset countdown, and your subscription renewal date.",
+  "author": { "name": "zoyluoblue", "url": "https://github.com/zoyluoblue" },
+  "homepage": "https://github.com/zoyluoblue/claude-usage",
+  "repository": "https://github.com/zoyluoblue/claude-usage",
+  "license": "MIT",
+  "keywords": ["claude-code", "usage", "rate-limit", "quota", "5-hour-limit", "weekly-limit", "status", "mod"],
+  "types": "./types/index.d.ts"
+}
