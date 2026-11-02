@@ -54,14 +54,14 @@ Installed at the user scope, the mod loads in every new Claude Code session on t
 ## Requirements
 
 - Claude Code with mod (function hook) support, signed in with a **Claude Pro or Max subscription**. API-key and third-party-provider sessions have no 5-hour or weekly window, so the ring stays grey.
-- The figures arrive with Claude's replies: a brand-new session shows `--` until the first reply.
+- The figures load a moment after a session starts; `--` shows only until that first read returns.
 
 ## How it works
 
-- **Usage** comes from Claude Code's own rate-limit readings (`five_hour` and `seven_day`), the same numbers the status line uses. They are pushed to the mod after every turn; nothing is polled.
+- **Usage** is read from your account (`/api/oauth/usage`, the same figures `/usage` shows) when a session starts and every 5 minutes, so every session, even an idle or freshly reloaded one, shows your account-wide 5-hour and weekly windows. Each Claude reply also pushes its own reading in between.
 - **Countdown** is computed from the window's reset time and refreshes every 30 seconds.
 - **Renewal date** is read once per session from your Anthropic account profile, through Claude Code's own signed-in connection. The profile carries the subscription start date but no end date, so the mod assumes **monthly billing** and shows the next monthly anniversary. If you pay yearly, that date is not your renewal.
-- No data leaves your machine other than that one profile request to `api.anthropic.com`. No telemetry, no third-party servers.
+- The only requests are those two reads to `api.anthropic.com` (usage every 5 minutes, profile once per session), through Claude Code's own signed-in connection. No telemetry, no third-party servers.
 
 ## FAQ
 
@@ -97,7 +97,7 @@ It is an estimate assuming monthly billing, based on when your subscription star
 
 按 `y` 添加 marketplace，范围选 **user**，之后这台电脑上的所有会话都会加载。也可以在 Claude 桌面 App 的 Code 页面点输入框旁的 **+** → **Plugins** → **Add marketplace**，填 `zoyluoblue/claude-usage`，再点 **Add plugin**。每台电脑安装一次即可。
 
-**要求**：登录 Claude Pro 或 Max 订阅；新会话在 Claude 第一次回复后才有数据。
+**要求**：登录 Claude Pro 或 Max 订阅。会话启动后自动读取账户额度，之后每 5 分钟刷新一次，空闲或刚重新加载的会话也能显示。
 
 ## Keywords
 

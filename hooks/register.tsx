@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { Register } from 'claude-code'
+import type { EngineInterface, Register } from 'claude-code'
 
 import type { Account, Quota } from '../types'
 
@@ -11,7 +11,9 @@ const account = atom({ plugin: 'quota-ring', key: 'account' } as const, {
   expiresAt: null,
 } as Account)
 
-const PROFILE = 'https://api.anthropic.com/api/oauth/profile'
+const API = 'https://api.anthropic.com/api/oauth'
+// The account-wide figures, the same /usage reads; a reply's own reading still lands in between.
+const PULL_EVERY = 5 * 60_000
 
 const RING = 26
 const WIDTH = 248
@@ -106,30 +108,52 @@ ${arc(INNER_R, five)}
 </svg>`
 }
 
+const authed = async ($: EngineInterface, path: string) => {
+  const auth = await $.session.authorize()
+  if (auth?.kind !== 'bearer') return undefined
+  return $.http.fetch(`${API}/${path}`, { auth: auth.handle, headers: { 'anthropic-beta': 'oauth-2025-04-20' } })
+}
+
+type Window = { utilization?: number | null; resets_at?: string | null } | null | undefined
+
+const pullUsage = async ($: EngineInterface) => {
+  try {
+    const res = await authed($, 'usage')
+    if (!res?.ok) return
+    const body = JSON.parse(res.text) as Record<string, Window>
+    const fresh: Quota[] = []
+    for (const kind of ['five_hour', 'seven_day']) {
+      const w = body[kind]
+      if (typeof w?.utilization !== 'number') continue
+      fresh.push({ kind, percentUsed: w.utilization, ...(w.resets_at ? { resetsAt: w.resets_at } : {}) })
+    }
+    if (fresh.length > 0) await update($, limits, () => fresh)
+  } catch {
+    // Keep the last reading.
+  }
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const usage = await $.session.usage()
-    await update($, limits, () => usage.rateLimits)
+    if (usage.rateLimits.length > 0) await update($, limits, () => usage.rateLimits)
     const t = await $.clock.now()
     await update($, now, () => t)
     $.clock.every(30_000, () => {
       void $.clock.now().then(t => update($, now, () => t))
     })
 
+    void pullUsage($)
+    $.clock.every(PULL_EVERY, () => void pullUsage($))
+
     void (async () => {
       let expiresAt: string | null = null
       try {
-        const auth = await $.session.authorize()
-        if (auth?.kind === 'bearer') {
-          const res = await $.http.fetch(PROFILE, {
-            auth: auth.handle,
-            headers: { 'anthropic-beta': 'oauth-2025-04-20' },
-          })
-          if (res.ok) {
-            const created = (JSON.parse(res.text) as { organization?: { subscription_created_at?: string } })
-              .organization?.subscription_created_at
-            if (created) expiresAt = nextRenewal(created, await $.clock.now())
-          }
+        const res = await authed($, 'profile')
+        if (res?.ok) {
+          const created = (JSON.parse(res.text) as { organization?: { subscription_created_at?: string } })
+            .organization?.subscription_created_at
+          if (created) expiresAt = nextRenewal(created, await $.clock.now())
         }
       } catch {
         // No profile: EXP shows --.
@@ -141,7 +165,7 @@ export const register: Register = on => {
   })
 
   on('session.measure', async ($, e, next) => {
-    if (e.changed.includes('rateLimits')) {
+    if (e.changed.includes('rateLimits') && e.rateLimits.length > 0) {
       await update($, limits, () => e.rateLimits)
     }
 
